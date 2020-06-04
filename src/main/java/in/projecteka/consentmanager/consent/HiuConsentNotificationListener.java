@@ -6,6 +6,7 @@ import in.projecteka.consentmanager.clients.ClientError;
 import in.projecteka.consentmanager.clients.ConsentArtefactNotifier;
 import in.projecteka.consentmanager.consent.model.ConsentArtefactsMessage;
 import in.projecteka.consentmanager.consent.model.request.ConsentArtefactReference;
+import in.projecteka.consentmanager.consent.model.request.ConsentNotifier;
 import in.projecteka.consentmanager.consent.model.request.HIUNotificationRequest;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
@@ -68,12 +69,18 @@ public class HiuConsentNotificationListener {
 
     private HIUNotificationRequest hiuNotificationRequest(ConsentArtefactsMessage consentArtefactsMessage) {
         List<ConsentArtefactReference> consentArtefactReferences = consentArtefactReferences(consentArtefactsMessage);
+
+        ConsentNotifier notification = ConsentNotifier.builder()
+                .consentRequestId(consentArtefactsMessage.getConsentRequestId())
+                .status(consentArtefactsMessage.getStatus())
+                .consentArtefacts(consentArtefactReferences)
+                .build();
+
         return HIUNotificationRequest
                 .builder()
-                .status(consentArtefactsMessage.getStatus())
                 .timestamp(consentArtefactsMessage.getTimestamp())
-                .consentArtefacts(consentArtefactReferences)
                 .consentRequestId(consentArtefactsMessage.getConsentRequestId())
+                .notification(notification)
                 .build();
     }
 
