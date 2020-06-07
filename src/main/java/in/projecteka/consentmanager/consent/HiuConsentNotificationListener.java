@@ -18,6 +18,7 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 
 import javax.annotation.PostConstruct;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import static in.projecteka.consentmanager.ConsentManagerConfiguration.HIU_CONSENT_NOTIFICATION_QUEUE;
@@ -63,24 +64,22 @@ public class HiuConsentNotificationListener {
 
     private void notifyHiu(ConsentArtefactsMessage consentArtefactsMessage) {
         HIUNotificationRequest hiuNotificationRequest = hiuNotificationRequest(consentArtefactsMessage);
-        String hiuConsentNotificationUrl = consentArtefactsMessage.getHiuConsentNotificationUrl();
-        consentArtefactNotifier.notifyHiu(hiuNotificationRequest, hiuConsentNotificationUrl).block();
+        String hiuId = consentArtefactsMessage.getHiuId();
+        consentArtefactNotifier.sendConsentArtifactToHIU(hiuNotificationRequest, hiuId).block();
     }
 
     private HIUNotificationRequest hiuNotificationRequest(ConsentArtefactsMessage consentArtefactsMessage) {
         List<ConsentArtefactReference> consentArtefactReferences = consentArtefactReferences(consentArtefactsMessage);
-
-        ConsentNotifier notification = ConsentNotifier.builder()
-                .consentRequestId(consentArtefactsMessage.getConsentRequestId())
-                .status(consentArtefactsMessage.getStatus())
-                .consentArtefacts(consentArtefactReferences)
-                .build();
-
         return HIUNotificationRequest
                 .builder()
                 .timestamp(consentArtefactsMessage.getTimestamp())
-                .consentRequestId(consentArtefactsMessage.getConsentRequestId())
-                .notification(notification)
+                .consentId(UUID.randomUUID())
+                .notification(ConsentNotifier
+                        .builder()
+                        .consentRequestId(consentArtefactsMessage.getConsentRequestId())
+                        .status(consentArtefactsMessage.getStatus())
+                        .consentArtefacts(consentArtefactReferences)
+                        .build())
                 .build();
     }
 

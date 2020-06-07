@@ -28,12 +28,8 @@ public class ConsentArtefactNotifier {
     private static final String HDR_HIU_ID = "X-HIU-ID";
     private static final String HIU_CONSENT_NOTIFICATION_URL_PATH = "/v1/consents/hiu/notify";
 
-    public Mono<Void> notifyHiu(HIUNotificationRequest request, String consentNotificationUrl) {
-        ConsentArtefactReference consentArtefactReference =
-                request.getNotification()
-                        .getConsentArtefacts()
-                        .get(0);
-        return postConsentArtifactToHiu(request, consentArtefactReference.getId());
+    public Mono<Void> sendConsentArtifactToHIU(HIUNotificationRequest request, String hiuId) {
+        return postConsentArtifactToHiu(request,hiuId);
     }
 
     /**
@@ -84,8 +80,8 @@ public class ConsentArtefactNotifier {
                                 .onStatus(HttpStatus::is5xxServerError,
                                         clientResponse -> Mono.error(ClientError.networkServiceCallFailed()))
                                 .toBodilessEntity())
-                .timeout(Duration.ofMillis(gatewayServiceProperties.getRequestTimeout()))
-                .then();
+                                .timeout(Duration.ofMillis(gatewayServiceProperties.getRequestTimeout()))
+                                .then();
     }
 
     private Mono<Void> postConsentArtefactToHip(Object body, String hipId) {

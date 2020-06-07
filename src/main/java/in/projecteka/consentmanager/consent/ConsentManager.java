@@ -7,22 +7,7 @@ import in.projecteka.consentmanager.clients.UserServiceClient;
 import in.projecteka.consentmanager.clients.model.Error;
 import in.projecteka.consentmanager.clients.model.ErrorRepresentation;
 import in.projecteka.consentmanager.common.CentralRegistry;
-import in.projecteka.consentmanager.consent.model.CMReference;
-import in.projecteka.consentmanager.consent.model.ConsentArtefact;
-import in.projecteka.consentmanager.consent.model.ConsentArtefactsMessage;
-import in.projecteka.consentmanager.consent.model.ConsentPurpose;
-import in.projecteka.consentmanager.consent.model.ConsentRepresentation;
-import in.projecteka.consentmanager.consent.model.ConsentRequest;
-import in.projecteka.consentmanager.consent.model.ConsentRequestDetail;
-import in.projecteka.consentmanager.consent.model.ConsentStatus;
-import in.projecteka.consentmanager.consent.model.GrantedContext;
-import in.projecteka.consentmanager.consent.model.HIPConsentArtefact;
-import in.projecteka.consentmanager.consent.model.HIPConsentArtefactRepresentation;
-import in.projecteka.consentmanager.consent.model.HIType;
-import in.projecteka.consentmanager.consent.model.ListResult;
-import in.projecteka.consentmanager.consent.model.PatientReference;
-import in.projecteka.consentmanager.consent.model.QueryRepresentation;
-import in.projecteka.consentmanager.consent.model.RevokeRequest;
+import in.projecteka.consentmanager.consent.model.*;
 import in.projecteka.consentmanager.consent.model.request.GrantedConsent;
 import in.projecteka.consentmanager.consent.model.request.RequestedDetail;
 import in.projecteka.consentmanager.consent.model.response.ConsentApprovalResponse;
@@ -48,7 +33,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -87,6 +71,7 @@ public class ConsentManager {
 	private final ConceptValidator conceptValidator;
 	private final ConsentArtefactQueryGenerator consentArtefactQueryGenerator;
     private final ConsentManagerClient consentManagerClient;
+	//private HIUReference hiuReferenceId;
 
 	private static boolean isSameRequester(ConsentArtefact consentDetail, String requesterId) {
 		return consentDetail.getHiu().getId().equals(requesterId) ||
@@ -230,7 +215,8 @@ public class ConsentManager {
 												consentRequest.getConsentNotificationUrl(),
 												requestId,
 												GRANTED,
-												consentRequest.getLastUpdated())
+												consentRequest.getLastUpdated(),
+												consentRequest.getHiu())
 												.thenReturn(consentApprovalResponse(consents)))));
 	}
 
@@ -251,10 +237,11 @@ public class ConsentManager {
 	}
 
 	private Mono<Void> broadcastConsentArtefacts(List<HIPConsentArtefactRepresentation> consents,
-	                                             String hiuConsentNotificationUrl,
-	                                             String requestId,
-	                                             ConsentStatus status,
-	                                             LocalDateTime lastUpdated) {
+												 String hiuConsentNotificationUrl,
+												 String requestId,
+												 ConsentStatus status,
+												 LocalDateTime lastUpdated,
+												 HIUReference consentRequest) {
 		ConsentArtefactsMessage message = ConsentArtefactsMessage
 				.builder()
 				.status(status)
@@ -262,6 +249,7 @@ public class ConsentManager {
 				.consentRequestId(requestId)
 				.consentArtefacts(consents)
 				.hiuConsentNotificationUrl(hiuConsentNotificationUrl)
+				.hiuId(consentRequest.getId())
 				.build();
 		return consentNotificationPublisher.publish(message);
 	}
@@ -298,7 +286,7 @@ public class ConsentManager {
 	                                                      String patientId,
 	                                                      ConsentRequestDetail consentRequest) {
 		return Flux.fromIterable(grantedConsents)
-				.flatMap(grantedConsent -> toConsentArtefact(consentRequest, grantedConsent)
+				.flatMap(grantedConsent ->  toConsentArtefact(consentRequest, grantedConsent)
 						.flatMap(consentArtefact -> consentArtefactQueryGenerator.toQueries(requestId,
 								patientId,
 								consentArtefact,
@@ -472,7 +460,8 @@ public class ConsentManager {
 						consentRequestDetail.getConsentNotificationUrl(),
 						"",
 						REVOKED,
-						consentRepresentation.getDateModified()));
+						consentRepresentation.getDateModified(),
+						consentRequestDetail.getHiu()));
 	}
 
 	public Mono<Void> deny(String id, String patientId) {
@@ -494,7 +483,8 @@ public class ConsentManager {
 						consentRequest.getConsentNotificationUrl(),
 						consentRequest.getRequestId(),
 						consentRequest.getStatus(),
-						consentRequest.getLastUpdated()));
+						consentRequest.getLastUpdated(),
+						consentRequest.getHiu()));
 	}
 
 	public Mono<ListResult<List<ConsentArtefactRepresentation>>> getAllConsentArtefacts(String username,
